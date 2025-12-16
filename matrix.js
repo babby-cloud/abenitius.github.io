@@ -94,22 +94,27 @@
   const togglePause = document.getElementById('togglePause');
   const toggleFlick = document.getElementById('toggleFlick');
 
-  function setPaused(val){ running = !val; if(!running){ cancelAnimationFrame(rafId); } else { loop(); } togglePause.textContent = running ? 'Pause' : 'Resume'; }
-  function setFlick(val){ allowFlick = val; toggleFlick.textContent = 'Flicker: ' + (allowFlick ? 'On' : 'Off'); }
+  function setPaused(val){
+    running = !val;
+    if(!running){ cancelAnimationFrame(rafId); } else { loop(); }
+    if(typeof togglePause !== 'undefined' && togglePause) try{ togglePause.textContent = running ? 'Pause' : 'Resume'; }catch(e){}
+  }
+
+  function setFlick(val){
+    allowFlick = val;
+    if(typeof toggleFlick !== 'undefined' && toggleFlick) try{ toggleFlick.textContent = 'Flicker: ' + (allowFlick ? 'On' : 'Off'); }catch(e){}
+  }
 
   if(togglePause) togglePause.addEventListener('click', ()=> setPaused(running));
   if(toggleFlick) toggleFlick.addEventListener('click', ()=> setFlick(!allowFlick));
 
-  // If the page doesn't provide controls, inject minimal floating buttons so mobile users can resume
-  if(!togglePause || !toggleFlick){
-    const inject = document.createElement('div');
-    inject.style.position = 'fixed'; inject.style.right = '12px'; inject.style.top = '12px'; inject.style.zIndex = 9999; inject.style.display = 'flex'; inject.style.gap = '8px';
-    const b1 = document.createElement('button'); b1.textContent = running ? 'Pause' : 'Resume';
-    const b2 = document.createElement('button'); b2.textContent = 'Flicker: ' + (allowFlick ? 'On' : 'Off');
-    [b1,b2].forEach(b=>{ b.style.padding='8px'; b.style.borderRadius='8px'; b.style.background='rgba(0,0,0,0.45)'; b.style.color='#66ff99'; b.style.border='1px solid rgba(102,255,153,0.08)'; });
-    b1.addEventListener('click', ()=>{ setPaused(running); b1.textContent = running ? 'Pause' : 'Resume'; });
-    b2.addEventListener('click', ()=>{ setFlick(!allowFlick); b2.textContent = 'Flicker: ' + (allowFlick ? 'On' : 'Off'); });
-    inject.appendChild(b1); inject.appendChild(b2); document.body.appendChild(inject);
+  // Auto-start after a short timeout on mobile/slow devices (unless user prefers reduced motion)
+  if(!running && !reduce){
+    // try to start a couple times; some mobile browsers take time to layout/paint
+    setTimeout(()=>{ if(!running && document.visibilityState === 'visible'){ running = true; loop(); } }, 250);
+    setTimeout(()=>{ if(!running && document.visibilityState === 'visible'){ running = true; loop(); } }, 1000);
+    // also start when tab becomes visible
+    document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState === 'visible' && !running){ running = true; loop(); } });
   }
 
   // keyboard shortcuts

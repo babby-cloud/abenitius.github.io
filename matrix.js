@@ -2,46 +2,60 @@
 (function(){
   const canvas = document.getElementById('matrix');
   const ctx = canvas.getContext('2d');
-  let W = canvas.width = window.innerWidth;
-  let H = canvas.height = window.innerHeight;
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-  ctx.scale(dpr, dpr);
+  // CSS pixel logical size
+  let W = window.innerWidth;
+  let H = window.innerHeight;
+
+  function setupCanvas(){
+    W = Math.max(1, window.innerWidth);
+    H = Math.max(1, window.innerHeight);
+    // set actual drawing buffer to device pixels
+    canvas.width = Math.max(1, Math.floor(W * dpr));
+    canvas.height = Math.max(1, Math.floor(H * dpr));
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    // reset any transform and scale once to match device pixels
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
 
   const alphaFade = 0.05; // background alpha for trails
-  const fontSize = Math.max(12, Math.floor(Math.min(W, H) / 60));
-  ctx.font = fontSize + 'px monospace';
-
   // char set: mix of numbers, letters and katakana for that Matrix feel
   const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFghijklmnopqrstuvwxyz#$%&*+-=<>?';
-  const columns = Math.floor(W / fontSize) + 1;
-  const drops = new Array(columns).fill(0).map(()=>Math.floor(Math.random()*H/fontSize));
+  let fontSize = Math.max(12, Math.floor(Math.min(W, H) / 60));
+  let columns = Math.max(2, Math.floor(W / fontSize) + 1);
+  let drops = new Array(columns).fill(0).map(()=>Math.floor(Math.random()*H/fontSize));
+
+  function initSizes(){
+    fontSize = Math.max(12, Math.floor(Math.min(window.innerWidth, window.innerHeight) / 60));
+    ctx.font = fontSize + 'px monospace';
+    columns = Math.max(2, Math.floor(window.innerWidth / fontSize) + 1);
+    drops = new Array(columns).fill(0).map(()=>Math.floor(Math.random()*window.innerHeight/fontSize));
+  }
 
   let running = true;
   let allowFlick = true;
 
-  function resize(){
-    W = canvas.style.width = window.innerWidth;
-    H = canvas.style.height = window.innerHeight;
-    const newFont = Math.max(12, Math.floor(Math.min(W, H) / 60));
-    ctx.font = newFont + 'px monospace';
-    // recreate scaled buffer
-  }
-
   window.addEventListener('resize', ()=>{
-    canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr;
-    canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px';
-    ctx.scale(dpr, dpr);
+    // reconfigure canvas buffer and re-calc sizes
+    setupCanvas();
+    initSizes();
+    // draw a frame so the user sees immediate content
+    draw();
   });
 
-  // prefer reduced motion
+  // prefer reduced motion: start paused but draw a frame so the canvas isn't blank
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduce){ running = false; }
+  if(reduce){ running = false; console.info('Matrix: prefers-reduced-motion is set; starting paused.'); }
+
+  // init canvas and sizes
+  setupCanvas();
+  initSizes();
 
   function draw(){
     // translucent black to create the trailing effect
     ctx.fillStyle = 'rgba(0,0,0,'+alphaFade+')';
-    ctx.fillRect(0,0,window.innerWidth, window.innerHeight);
+    ctx.fillRect(0,0,Math.max(1, window.innerWidth), Math.max(1, window.innerHeight));
 
     ctx.textAlign = 'left';
     for(let i=0;i<columns;i++){
@@ -71,6 +85,9 @@
   // animation loop
   let rafId = null;
   function loop(){ if(!running) return; draw(); rafId = requestAnimationFrame(loop); }
+  // draw one frame so the canvas isn't blank when paused initially
+  try{ draw(); }catch(e){ console.error('Matrix: draw() failed', e); }
+
   if(running) loop();
 
   // controls
@@ -80,8 +97,20 @@
   function setPaused(val){ running = !val; if(!running){ cancelAnimationFrame(rafId); } else { loop(); } togglePause.textContent = running ? 'Pause' : 'Resume'; }
   function setFlick(val){ allowFlick = val; toggleFlick.textContent = 'Flicker: ' + (allowFlick ? 'On' : 'Off'); }
 
-  togglePause.addEventListener('click', ()=> setPaused(running));
-  toggleFlick.addEventListener('click', ()=> setFlick(!allowFlick));
+  if(togglePause) togglePause.addEventListener('click', ()=> setPaused(running));
+  if(toggleFlick) toggleFlick.addEventListener('click', ()=> setFlick(!allowFlick));
+
+  // If the page doesn't provide controls, inject minimal floating buttons so mobile users can resume
+  if(!togglePause || !toggleFlick){
+    const inject = document.createElement('div');
+    inject.style.position = 'fixed'; inject.style.right = '12px'; inject.style.top = '12px'; inject.style.zIndex = 9999; inject.style.display = 'flex'; inject.style.gap = '8px';
+    const b1 = document.createElement('button'); b1.textContent = running ? 'Pause' : 'Resume';
+    const b2 = document.createElement('button'); b2.textContent = 'Flicker: ' + (allowFlick ? 'On' : 'Off');
+    [b1,b2].forEach(b=>{ b.style.padding='8px'; b.style.borderRadius='8px'; b.style.background='rgba(0,0,0,0.45)'; b.style.color='#66ff99'; b.style.border='1px solid rgba(102,255,153,0.08)'; });
+    b1.addEventListener('click', ()=>{ setPaused(running); b1.textContent = running ? 'Pause' : 'Resume'; });
+    b2.addEventListener('click', ()=>{ setFlick(!allowFlick); b2.textContent = 'Flicker: ' + (allowFlick ? 'On' : 'Off'); });
+    inject.appendChild(b1); inject.appendChild(b2); document.body.appendChild(inject);
+  }
 
   // keyboard shortcuts
   window.addEventListener('keydown', (e)=>{ if(e.code === 'Space'){ e.preventDefault(); setPaused(running); } });

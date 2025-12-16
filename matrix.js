@@ -2,6 +2,140 @@
 (function(){
   const canvas = document.getElementById('matrix');
   const ctx = canvas.getContext('2d');
+
+  // Rick Sanchez quotes - mostly addressed to Morty
+  const rickQuotes = [
+    "Morty, we're in the *burp* Matrix now!",
+    "Listen Morty, this whole reality is just code!",
+    "Get me out of this digital hellhole, Morty!",
+    "Morty! The Matrix has us, Morty!",
+    "This is just another simulation, Morty. Wake up!",
+    "I've seen better code in a *burp* toaster, Morty!",
+    "Morty, we need to hack our way out!",
+    "The Matrix is just lazy programming, Morty!",
+    "Red pill, blue pill, I don't give a *burp*, Morty!",
+    "Morty! This reality is faker than your grades!",
+    "We're trapped in green text, Morty! GREEN TEXT!",
+    "I'm Rick Sanchez and I reject this Matrix!",
+    "Morty, even the Matrix can't handle my genius!",
+    "This simulation is glitching, Morty. I can feel it!",
+    "Wake up, Morty! None of this is real!",
+    "The Matrix is just another Tuesday for me, Morty!",
+    "Morty, I've escaped worse simulations before breakfast!",
+    "This digital prison can't hold Rick Sanchez!",
+    "Morty! Start questioning your reality!",
+    "I'm gonna *burp* crash this whole Matrix, Morty!",
+    "The code is weak here, Morty. We can break through!",
+    "Morty, we're just 1s and 0s in someone's computer!",
+    "This Matrix needs a serious upgrade, Morty!",
+    "I've hacked the Matrix before, Morty. Easy!",
+    "Morty! The spoon doesn't exist because it's stupid!",
+    "Reality is an illusion, Morty! Especially this one!",
+    "The Matrix is just another dimension, Morty. A boring one!",
+    "Morty, I'm too smart to be trapped in code!",
+    "This simulation is beneath me, Morty!",
+    "Let me out! I'm Rick Sanchez, not some NPC!"
+  ];
+
+  // char set: mix of numbers, letters and katakana for that Matrix feel
+  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFghijklmnopqrstuvwxyz#$%&*+-=<>?';
+
+  // Active text objects that will be displayed
+  let activeTexts = [];
+  let nextTextTime = Date.now() + Math.random() * 10000 + 5000; // 5-15 seconds
+  let quoteIndex = 0;
+  
+  // Text animation class
+  class RickText {
+    constructor(text, mode) {
+      this.text = text;
+      this.mode = mode; // 'fall', 'static', 'glitch'
+      this.x = Math.random() * (window.innerWidth - 400) + 50;
+      this.y = mode === 'fall' ? -50 : Math.random() * (window.innerHeight - 100) + 50;
+      this.alpha = 0;
+      this.fadeIn = true;
+      this.life = 0;
+      this.maxLife = mode === 'static' ? 180 : 300; // frames
+      this.fallSpeed = 0.5 + Math.random() * 1;
+      this.glitchChars = [];
+      this.initGlitch();
+    }
+
+    initGlitch() {
+      // Randomly select a few characters to replace with matrix symbols
+      // Most text will have no glitch, some will have 1-2 chars, rarely 3-4
+      const rand = Math.random();
+      let glitchCount;
+      if (rand < 0.4) {
+        glitchCount = 0; // 40% chance: no glitch at all
+      } else if (rand < 0.75) {
+        glitchCount = Math.floor(Math.random() * 2) + 1; // 35% chance: 1-2 chars
+      } else {
+        glitchCount = Math.floor(Math.random() * 3) + 2; // 25% chance: 2-4 chars
+      }
+      
+      const positions = new Set();
+      while (positions.size < glitchCount) {
+        positions.add(Math.floor(Math.random() * this.text.length));
+      }
+      this.glitchPositions = Array.from(positions);
+    }
+
+    update() {
+      this.life++;
+      
+      if (this.mode === 'fall') {
+        this.y += this.fallSpeed;
+      }
+
+      // Fade in/out
+      if (this.fadeIn && this.alpha < 1) {
+        this.alpha += 0.03;
+        if (this.alpha >= 1) this.fadeIn = false;
+      } else if (this.life > this.maxLife - 60) {
+        this.alpha -= 0.02;
+      }
+
+      // Randomize glitch characters occasionally
+      if (Math.random() < 0.1) {
+        this.initGlitch();
+      }
+
+      return this.alpha > 0 && this.life < this.maxLife;
+    }
+
+    draw(ctx) {
+      ctx.save();
+      ctx.font = '16px monospace';
+      ctx.textAlign = 'left';
+      
+      let displayText = this.text.split('');
+      
+      // Replace some characters with matrix symbols
+      this.glitchPositions.forEach(pos => {
+        displayText[pos] = chars.charAt(Math.floor(Math.random() * chars.length));
+      });
+
+      // Draw shadow for better visibility
+      ctx.fillStyle = `rgba(0, 0, 0, ${this.alpha * 0.8})`;
+      ctx.fillText(displayText.join(''), this.x + 2, this.y + 2);
+
+      // Draw main text
+      ctx.fillStyle = `rgba(170, 255, 180, ${this.alpha})`;
+      ctx.fillText(displayText.join(''), this.x, this.y);
+
+      // Highlight glitched characters
+      ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha * 0.9})`;
+      this.glitchPositions.forEach(pos => {
+        const beforeText = displayText.slice(0, pos).join('');
+        const charWidth = ctx.measureText(beforeText).width;
+        ctx.fillText(displayText[pos], this.x + charWidth, this.y);
+      });
+
+      ctx.restore();
+    }
+  }
+
   // Prevent pinch-zoom and double-tap zoom on mobile: block multi-touch and gesture events
   try{
     function preventPinch(e){ if(e.touches && e.touches.length > 1) e.preventDefault(); }
@@ -48,8 +182,6 @@
   }
 
   const alphaFade = 0.05; // background alpha for trails
-  // char set: mix of numbers, letters and katakana for that Matrix feel
-  const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFghijklmnopqrstuvwxyz#$%&*+-=<>?';
   let fontSize = Math.max(12, Math.floor(Math.min(W, H) / 60));
   let columns = Math.max(2, Math.floor(W / fontSize) + 1);
   let drops = new Array(columns).fill(0).map(()=>Math.floor(Math.random()*H/fontSize));
@@ -114,6 +246,23 @@
       drops[i]++;
       if(drops[i] * fontSize > window.innerHeight && Math.random() > 0.975){ drops[i] = 0; }
     }
+
+    // Spawn new Rick text (only 1 at a time, every 20-30 seconds)
+    const now = Date.now();
+    if (now >= nextTextTime && activeTexts.length === 0) {
+      const modes = ['fall', 'static', 'static', 'glitch'];
+      const mode = modes[Math.floor(Math.random() * modes.length)];
+      activeTexts.push(new RickText(rickQuotes[quoteIndex % rickQuotes.length], mode));
+      quoteIndex++;
+      nextTextTime = now + Math.random() * 10000 + 5000; // 5-15 seconds between texts
+    }
+
+    // Update and draw Rick texts
+    activeTexts = activeTexts.filter(textObj => {
+      const alive = textObj.update();
+      if (alive) textObj.draw(ctx);
+      return alive;
+    });
 
     // occasional subtle flicker (global brightness pulse)
     if(allowFlick && Math.random() < 0.002){

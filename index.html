@@ -6,6 +6,27 @@
     <meta name="theme-color" content="#07120a" />
     <title>Abenitius.eu</title>
     <link rel="stylesheet" href="styles.css">
+
+    <script id="Cookiebot" src="https://consent.cookiebot.com/uc.js" data-cbid="c12dad9f-8245-4bab-86be-f4ed72a21e9b"  type="text/javascript"></script>
+
+    <script>
+      window.OrbioDLConfig = {
+        enableCMPAutoDetect: true,    // Master switch
+        enableCookiebot: true,        // CookieBot integration
+        enableOneTrust: false,         // OneTrust integration
+        cmpDetectionTimeout: 5000 ,    // Max wait time (ms)
+        gtmServerUrl: 'https://sgtm.abenitius.eu'
+        };
+      
+      // Queue the page_view event
+      window.OrbioDL = window.OrbioDL || [];
+      window.OrbioDL.push({
+        event: 'page_view'
+        //tbd: additional configuration if needed
+      });
+  </script>
+
+ <script src="https://sgtm.abenitius.eu/orbio-dl.js"></script>
   </head>
   <body>
     <canvas id="matrix"></canvas>
